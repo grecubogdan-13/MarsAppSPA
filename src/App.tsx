@@ -5,6 +5,7 @@ import nasaLogo from './NASA.svg';
 import './App.css';
 import {FormControl, InputLabel, MenuItem, Select, SelectChangeEvent} from "@mui/material";
 import axios from "axios";
+import {BounceLoader} from "react-spinners";
 
 interface CounterProps {
     counter: {
@@ -123,7 +124,6 @@ function TestNASA() {
 
     useEffect(() => {
         if (fetchData) {
-            console.log("ok");
             fetch('http://localhost:8000/rovers/curiosity/sol/1000/photos/html')
                 .then((response) => response.text()).then((d) => setData(d));
         }
@@ -143,37 +143,44 @@ function FindRovers() {
     const [SelectedCamera, setSelectedCamera] = useState("");
     const [getPhotos, setGetPhotos] = useState(false);
     const [photos, setPhotos] = useState([]);
+    let [loadingRovers, setLoadingRovers] = useState(true);
+    let [loadingCameras, setLoadingCameras] = useState(false);
+    let [loadingPhotos, setLoadingPhotos] = useState(false);
 
     useEffect(() => {
+        setLoadingRovers(true);
         axios.get('https://api.nasa.gov/mars-photos/api/v1/rovers?api_key=TxbNgclp1JXLSnghP5ecigSdEUvdMNcabY3p1lno').then(
             (d) => {
                 let data = d.data.rovers;
                 if (data != null) {
-                    setRoverList(data.map((element: any) => {
-                        return element.name;
-                    }));
+                    setRoverList(data);
                 }
                 sessionStorage.setItem("rovers", RoverList.toString());
+                setLoadingRovers(false);
             }
         ).catch(err => console.log(err));
     }, []);
 
     useEffect(() => {
+        setLoadingCameras(true);
         axios.get('http://localhost:8000/rovers/' + SelectedRover).then(
             (d) => {
                 let data = d.data.cameras;
                 if (data != null) {
-                    setCameraList(data.map((element: any) => {
-                        return element;
-                    }));
+                    setCameraList(data);
                 }
                 sessionStorage.setItem("cameras", CameraList.toString());
+                setLoadingCameras(false);
             }
-        ).catch(err => console.log(err));
+        ).catch(err => {
+            console.log(err);
+            setLoadingCameras(false);
+        });
     }, [SelectedRover]);
 
     useEffect(() => {
         if (getPhotos) {
+            setLoadingPhotos(true);
             axios.get('http://localhost:8000/rovers/' + SelectedRover + '/sol/1000/camera/' + SelectedCamera + '/photos').then(
                 (d) => {
                     let data = d.data.photos;
@@ -183,16 +190,18 @@ function FindRovers() {
                         }));
                     }
                     sessionStorage.setItem("photos", photos.toString());
+                    setLoadingPhotos(false);
                 }
             ).catch(err => console.log(err));
+        } else {
+            setPhotos([]);
         }
-    }, [getPhotos,SelectedCamera]);
+    }, [getPhotos, SelectedCamera]);
 
     return (
-        <div>
-            <p>{RoverList.length}</p>
-            <FormControl fullWidth>
-                <InputLabel id="rover-select">Rover</InputLabel>
+        <div className = "poze">
+            <FormControl fullWidth className= "poze">
+                <InputLabel id="rover-select" className= "poze">Rover</InputLabel>
                 <Select
                     labelId="rover-select"
                     id="rover-select"
@@ -201,14 +210,17 @@ function FindRovers() {
                     onChange={(event: SelectChangeEvent) => {
                         sessionStorage.setItem("selectedRover", event.target.value);
                         setSelectedRover(event.target.value);
+                        setGetPhotos(false);
                     }}
                 >
-                    {RoverList.map((rover) => <MenuItem value={rover}>{rover}</MenuItem>)}
+                    {RoverList.map((rover) => <MenuItem key={rover.id} value={rover.name}>{rover.name}</MenuItem>)}
                 </Select>
             </FormControl>
-            <p>{CameraList.length}</p>
-            <FormControl fullWidth>
-                <InputLabel id="camera-select">Camera</InputLabel>
+            <p>
+                <BounceLoader className= "poze" color={"red"} loading={loadingRovers}/>
+            </p>
+            <FormControl fullWidth className= "poze">
+                <InputLabel id="camera-select" className= "poze">Camera</InputLabel>
                 <Select
                     labelId="camera-select"
                     id="camera-select"
@@ -217,15 +229,23 @@ function FindRovers() {
                     onChange={(event: SelectChangeEvent) => {
                         sessionStorage.setItem("selectedRover", event.target.value);
                         setSelectedCamera(event.target.value);
+                        setGetPhotos(false);
                     }}
                 >
-                    {CameraList.map((camera) => <MenuItem value={camera.name}>{camera.full_name}</MenuItem>)}
+                    {CameraList.map((camera) => {
+                        return <MenuItem key={camera.name} value={camera.name}>{camera.full_name}</MenuItem>
+                    })}
                 </Select>
             </FormControl>
-            <p>{SelectedCamera}</p>
-            <button onClick={() => setGetPhotos(true)}>Get Photos</button>
+            <p>
+                <BounceLoader color={"green"} loading={loadingCameras}/>
+            </p>
+            <button className= "poze" onClick={() => setGetPhotos(true)}>Get Photos</button>
             <br/>
-            {photos.map((photo) => <img src = {photo}/>)}
+            <p>
+                <BounceLoader color={"blue"} loading={loadingPhotos}/>
+            </p>
+            {photos.map((photo) => <img className= "poze" key={photo} src={photo}/>)}
         </div>
     )
 }
@@ -235,8 +255,8 @@ function App() {
         <Router>
             <h1>Main Title</h1>
             <Routes>
-                <Route path = "/" element = {
-                    <Link to = "/home">home</Link>
+                <Route path="/" element={
+                    <Link to="/home">home</Link>
                 }
                 />
                 <Route path="/home" element={
@@ -312,7 +332,7 @@ function App() {
                     </div>
                 }/>
                 <Route path="/rovers" element={
-                    <div>
+                    <div className= "poze">
                         <FindRovers></FindRovers>
                         <Link to="/home"> home </Link>
                     </div>
